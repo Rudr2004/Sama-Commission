@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#2a4bd8"/>
+  <path d="M32 10 L50 17 V30 C50 42 43 50 32 55 C21 50 14 42 14 30 V17 Z"
+        fill="#eef4ff" stroke="#eef4ff" stroke-width="1"/>
+  <path d="M32 15 L45.5 20.2 V30 C45.5 39.8 40 46.2 32 50.3 C24 46.2 18.5 39.8 18.5 30 V20.2 Z"
+        fill="#2a4bd8"/>
+  <text x="32" y="37.5" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700"
+        fill="#eef4ff" text-anchor="middle">CR</text>
+</svg>
