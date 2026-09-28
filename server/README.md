@@ -71,13 +71,18 @@ run both at once, in two terminals, while developing.
             { "slabLabel": "New", "allFuelPercent": 20, "petrolPercent": null, "dieselPercent": null, "cngPercent": null, "electricPercent": null, "note": "" }
           ],
           "remarks": "...",
-          "bookingEntity": "..."
+          "bookingEntity": "...",
+          "sourceSheet": "PCV STP"
         }
       ],
       "unparsedNotes": "..."
     }
   }
   ```
+  `sourceSheet` is present only for spreadsheet uploads (`.xlsx`/`.xlsb`) — it's the name of the
+  workbook sheet each line item came from, stamped on by the backend after extraction (not part of
+  the model's output schema), so the frontend can group results by sheet. Absent for PDF/image
+  uploads, which have no sheet concept.
 
 Max upload size is 20MB. Accepted types: `application/pdf`, `image/png`, `image/jpeg`,
 `image/webp`, `.xlsx`, `.xlsb`.
