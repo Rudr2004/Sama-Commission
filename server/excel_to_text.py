@@ -22,6 +22,39 @@ from openpyxl import load_workbook
 # dense per-row detail, both of which multiply token usage per row.
 MAX_ROWS_PER_CHUNK = 150
 
+# Column count alone is a weak signal for output size: a sheet can have many
+# short label columns (cheap) or few rate columns (also cheap). What actually
+# drives output size is how many *rate-shaped* cells (percentages, or plain
+# numbers) sit in each row — this schema turns multi-category rate columns
+# (e.g. one per vehicle class/tonnage band, not just per fuel type) into one
+# "rates" array entry each, and every entry costs several output fields. A row
+# with 8 rate-like columns can outweigh 100 rows that only have 1.
+#
+# So the row cap is scaled down by the sheet's average rate-cell density per
+# row rather than by raw column count, keeping simple sheets (mostly label
+# columns, one rate value) at the full cap while splitting dense rate-matrix
+# sheets into several smaller chunks.
+RATE_CELL_PATTERN = re.compile(r"^-?\d+(\.\d+)?%?$")
+SIMPLE_RATE_CELLS_PER_ROW = 1.5
+MIN_ROWS_PER_CHUNK = 15
+
+
+def _avg_rate_cells_per_row(rows: list[str]) -> float:
+    if len(rows) <= 1:
+        return 0.0
+    data_rows = rows[1:]  # skip header row
+    total = 0
+    for row in data_rows:
+        total += sum(1 for cell in row.split("\t") if RATE_CELL_PATTERN.match(cell.strip()))
+    return total / len(data_rows)
+
+
+def _max_rows_for_rate_density(avg_rate_cells: float) -> int:
+    if avg_rate_cells <= SIMPLE_RATE_CELLS_PER_ROW:
+        return MAX_ROWS_PER_CHUNK
+    scale = SIMPLE_RATE_CELLS_PER_ROW / avg_rate_cells
+    return max(MIN_ROWS_PER_CHUNK, int(MAX_ROWS_PER_CHUNK * scale))
+
 _PERCENT_FORMAT = re.compile(r"%")
 _DECIMAL_PLACES = re.compile(r"0(\.(0+))?%")
 
@@ -43,10 +76,13 @@ def excel_buffer_to_chunks(buffer: bytes) -> list[dict]:
         if not rows:
             continue
 
-        if len(rows) <= MAX_ROWS_PER_CHUNK:
+        max_rows = _max_rows_for_rate_density(_avg_rate_cells_per_row(rows))
+
+        if len(rows) <= max_rows:
             chunks.append(
                 {
                     "label": f"Sheet: {worksheet.title}",
+                    "sheetName": worksheet.title,
                     "text": "\n".join([f"## Sheet: {worksheet.title}", *rows]),
                 }
             )
@@ -57,12 +93,13 @@ def excel_buffer_to_chunks(buffer: bytes) -> list[dict]:
         # lost per chunk.
         header_row = rows[0]
         data_rows = rows[1:]
-        for i in range(0, len(data_rows), MAX_ROWS_PER_CHUNK):
-            sliced = data_rows[i : i + MAX_ROWS_PER_CHUNK]
+        for i in range(0, len(data_rows), max_rows):
+            sliced = data_rows[i : i + max_rows]
             range_label = f"rows {i + 2}-{i + 1 + len(sliced)}"  # +2: 1-indexed, +1 for header row
             chunks.append(
                 {
                     "label": f"Sheet: {worksheet.title} ({range_label})",
+                    "sheetName": worksheet.title,
                     "text": "\n".join([f"## Sheet: {worksheet.title} ({range_label})", header_row, *sliced]),
                 }
             )
