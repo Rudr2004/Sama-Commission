@@ -13,8 +13,6 @@ dist-ssr
 *.local
 
 # Environment variables (contains API keys — never commit)
-.env
-.env.*
 !.env.example
 server/node_modules
 
@@ -28,7 +26,6 @@ server/**/__pycache__
 .pytest_cache
 
 # Editor directories and files
-.vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
@@ -39,3 +36,4 @@ server/**/__pycache__
 *.sw?
 
 Record
+config.bat

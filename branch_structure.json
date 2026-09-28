@@ -1,0 +1,24 @@
+{
+  "default_branch": "development",
+  "branches": [
+    "development",
+    "feature/extractions-poc",
+    "feature/gridPayouts",
+    "feature/gridPayouts-v2",
+    "origin"
+  ],
+  "parent": {
+    "development": null,
+    "feature/extractions-poc": "development",
+    "feature/gridPayouts": "development",
+    "feature/gridPayouts-v2": "feature/gridPayouts",
+    "origin": "development"
+  },
+  "order": [
+    "development",
+    "feature/extractions-poc",
+    "feature/gridPayouts",
+    "origin",
+    "feature/gridPayouts-v2"
+  ]
+}

@@ -116,6 +116,7 @@ export function CommissionGrid() {
   const [policyTypeFilter, setPolicyTypeFilter] = useState('all');
   const [rtoFilter, setRtoFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [activeSheet, setActiveSheet] = useState('all');
 
   useEffect(() => {
     try {
@@ -130,7 +131,38 @@ export function CommissionGrid() {
   }, [result]);
 
   const resultLineItems = result?.extraction?.lineItems;
-  const lineItems = useMemo(() => resultLineItems ?? [], [resultLineItems]);
+  const allLineItems = useMemo(() => resultLineItems ?? [], [resultLineItems]);
+
+  // Spreadsheet uploads stamp each line item with the workbook sheet it came
+  // from (see server/anthropic_client.py); PDFs/images have no sheet concept,
+  // so sourceSheet is absent there and the tab bar never renders.
+  const sheetNames = useMemo(() => {
+    const seen = new Set();
+    const ordered = [];
+    for (const item of allLineItems) {
+      if (item.sourceSheet && !seen.has(item.sourceSheet)) {
+        seen.add(item.sourceSheet);
+        ordered.push(item.sourceSheet);
+      }
+    }
+    return ordered;
+  }, [allLineItems]);
+
+  const lineItems = useMemo(() => {
+    if (activeSheet === 'all') return allLineItems;
+    return allLineItems.filter((item) => item.sourceSheet === activeSheet);
+  }, [allLineItems, activeSheet]);
+
+  const handleSheetChange = (sheetName) => {
+    setActiveSheet(sheetName);
+    setSearch('');
+    setCompanyFilter('all');
+    setProductFilter('all');
+    setSubProductFilter('all');
+    setPolicyTypeFilter('all');
+    setRtoFilter('all');
+    setPage(1);
+  };
 
   const uniqueSorted = (values) => Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b));
 
@@ -258,6 +290,7 @@ export function CommissionGrid() {
       setPolicyTypeFilter('all');
       setRtoFilter('all');
       setPage(1);
+      setActiveSheet('all');
       toast.success('Grid extracted', `Parsed ${data.extraction?.lineItems?.length ?? 0} line item(s) from ${data.fileName}.`);
     } catch (err) {
       setError(err.message || 'Something went wrong while extracting the grid.');
@@ -279,6 +312,7 @@ export function CommissionGrid() {
     setPolicyTypeFilter('all');
     setRtoFilter('all');
     setPage(1);
+    setActiveSheet('all');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -468,6 +502,42 @@ export function CommissionGrid() {
               Upload Another
             </Button>
           </div>
+
+          {sheetNames.length > 1 && (
+            <div className="flex items-center gap-1 px-5 pt-3 overflow-x-auto border-b border-slate-100 bg-white">
+              <button
+                type="button"
+                onClick={() => handleSheetChange('all')}
+                className={`shrink-0 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+                  activeSheet === 'all'
+                    ? 'border-brand-500 text-brand-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                All Sheets
+                <span className="ml-1.5 text-xs text-slate-400">({allLineItems.length})</span>
+              </button>
+              {sheetNames.map((name) => {
+                const count = allLineItems.filter((item) => item.sourceSheet === name).length;
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => handleSheetChange(name)}
+                    className={`shrink-0 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+                      activeSheet === name
+                        ? 'border-brand-500 text-brand-700'
+                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                    }`}
+                  >
+                    {name}
+                    <span className="ml-1.5 text-xs text-slate-400">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <CardBody className="space-y-4">
             <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
