@@ -33,9 +33,12 @@ which insurer/broker layout the document uses.
    ```
 3. Run the server:
    ```
-   dev.bat                                                            # Windows
-   # venv/bin/uvicorn main:app --host 0.0.0.0 --port 5001 --reload    # macOS/Linux
+   dev.bat                                                            # Windows, cmd/PowerShell
+   venv/Scripts/uvicorn main:app --host 0.0.0.0 --port 5001 --reload  # Windows, Git Bash — use forward slashes
+   venv/bin/uvicorn main:app --host 0.0.0.0 --port 5001 --reload      # macOS/Linux
    ```
+   Note: on Windows, Git Bash treats `\` as an escape character, so a path like `venv\Scripts\uvicorn`
+   silently breaks there — always use `venv/Scripts/uvicorn` (forward slashes) in Git Bash specifically.
 
 Frontend and backend are started independently, each with its own native tooling: `npm run dev`
 (from the project root) for the Vite frontend, `dev.bat` (from `server/`) for this API. The

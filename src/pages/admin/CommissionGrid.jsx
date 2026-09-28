@@ -3,6 +3,7 @@ import { Card, CardHeader, CardBody } from '../../components/common/Card.jsx';
 import { Button } from '../../components/common/Button.jsx';
 import { Badge } from '../../components/common/Badge.jsx';
 import { useToast } from '../../components/common/ToastContext.jsx';
+import { CommissionGridFilterSelect } from './CommissionGridFilterSelect.jsx';
 
 const ACCEPTED_TYPES = [
   'application/pdf',
@@ -31,6 +32,22 @@ function formatPercent(value, note) {
   return '—';
 }
 
+// Color-codes a rate badge by its value so the table is scannable at a glance:
+// higher commission/discount % reads as a stronger green, mid-range as blue,
+// low values as amber, and non-numeric shorthand (IRDA, "as per system", etc.)
+// as neutral slate rather than implying a judgment about the value.
+function rateTone(value) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'slate';
+  if (value >= 40) return 'green';
+  if (value >= 20) return 'brand';
+  return 'amber';
+}
+
+function RateBadge({ value, note }) {
+  if (value == null && !note) return <span className="text-slate-300 text-sm">—</span>;
+  return <Badge tone={rateTone(value)}>{formatPercent(value, note)}</Badge>;
+}
+
 const FUEL_COLUMNS = [
   { key: 'petrolPercent', noteKey: 'petrolNote', label: 'Petrol' },
   { key: 'dieselPercent', noteKey: 'dieselNote', label: 'Diesel' },
@@ -40,6 +57,34 @@ const FUEL_COLUMNS = [
 
 function slabHasAnyFuelValue(slab) {
   return FUEL_COLUMNS.some((col) => slab[col.key] != null || slab[col.noteKey]);
+}
+
+// Deterministic color assignment so the same company/policy-type always gets
+// the same pill color across every row and every re-render, without needing
+// to track assignments in state.
+const PILL_PALETTE = [
+  'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200',
+  'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200',
+  'bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-200',
+  'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200',
+  'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200',
+  'bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-200',
+];
+
+function pillClassFor(label) {
+  if (!label) return PILL_PALETTE[0];
+  let hash = 0;
+  for (let i = 0; i < label.length; i++) hash = (hash * 31 + label.charCodeAt(i)) >>> 0;
+  return PILL_PALETTE[hash % PILL_PALETTE.length];
+}
+
+function IdentityPill({ label }) {
+  if (!label) return <span className="text-slate-300">—</span>;
+  return (
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${pillClassFor(label)}`}>
+      {label}
+    </span>
+  );
 }
 
 function loadStoredResult() {
@@ -242,29 +287,29 @@ export function CommissionGrid() {
     setPage(1);
   };
 
-  const handleCompanyFilterChange = (e) => {
-    setCompanyFilter(e.target.value);
+  const handleCompanyFilterChange = (value) => {
+    setCompanyFilter(value);
     setPage(1);
   };
 
-  const handleProductFilterChange = (e) => {
-    setProductFilter(e.target.value);
+  const handleProductFilterChange = (value) => {
+    setProductFilter(value);
     setSubProductFilter('all'); // sub-product options depend on the selected class, so reset it
     setPage(1);
   };
 
-  const handleSubProductFilterChange = (e) => {
-    setSubProductFilter(e.target.value);
+  const handleSubProductFilterChange = (value) => {
+    setSubProductFilter(value);
     setPage(1);
   };
 
-  const handlePolicyTypeFilterChange = (e) => {
-    setPolicyTypeFilter(e.target.value);
+  const handlePolicyTypeFilterChange = (value) => {
+    setPolicyTypeFilter(value);
     setPage(1);
   };
 
-  const handleRtoFilterChange = (e) => {
-    setRtoFilter(e.target.value);
+  const handleRtoFilterChange = (value) => {
+    setRtoFilter(value);
     setPage(1);
   };
 
@@ -354,35 +399,75 @@ export function CommissionGrid() {
           </div>
 
           {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start gap-2">
+              <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+              <span>{error}</span>
+            </div>
           )}
 
           {isExtracting && (
-            <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-700">
-              Reading the document and extracting commission data — this usually takes 1–3 minutes, and can take
-              longer (up to 10+ minutes) for large multi-sheet spreadsheets. Please keep this tab open.
+            <div className="relative overflow-hidden rounded-xl border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-50 px-5 py-4">
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-brand-100 overflow-hidden">
+                <div className="h-full w-1/3 bg-brand-500 rounded-full animate-loading-bar" />
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative shrink-0 w-9 h-9">
+                  <div className="absolute inset-0 rounded-full border-2 border-brand-200" />
+                  <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-brand-600 animate-spin" />
+                  <svg className="absolute inset-0 m-auto w-4 h-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.989-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-brand-800">AI is reading your document…</p>
+                  <p className="text-xs text-brand-600 mt-0.5">
+                    Parsing rows, matching commission slabs, and structuring the data. Usually 1–3 minutes; large
+                    multi-sheet spreadsheets can take 10+ minutes. Keep this tab open.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 mt-3 pl-12">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce [animation-delay:-0.3s]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce [animation-delay:-0.15s]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce" />
+              </div>
             </div>
           )}
         </CardBody>
       </Card>
 
       {result && (
-        <Card>
-          <CardHeader
-            title={result.extraction.documentTitle || result.fileName}
-            subtitle={[
-              result.extraction.issuingEntity,
-              result.extraction.validityPeriod,
-              `${result.extraction.lineItems.length} line item(s)`,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-            action={
-              <Button size="sm" variant="ghost" onClick={handleReset}>
-                Upload Another
-              </Button>
-            }
-          />
+        <Card className="animate-result-fade-in overflow-hidden">
+          <div className="flex items-start justify-between gap-4 px-5 py-4 bg-gradient-to-r from-emerald-50 via-white to-white border-b border-slate-100">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="shrink-0 w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-slate-900 truncate">
+                  {result.extraction.documentTitle || result.fileName}
+                </h2>
+                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                  {result.extraction.issuingEntity && (
+                    <Badge tone="slate">{result.extraction.issuingEntity}</Badge>
+                  )}
+                  {result.extraction.validityPeriod && (
+                    <Badge tone="slate">{result.extraction.validityPeriod}</Badge>
+                  )}
+                  <Badge tone="brand">{result.extraction.lineItems.length} line items</Badge>
+                  <Badge tone="violet">{companies.length} {companies.length === 1 ? 'company' : 'companies'}</Badge>
+                  <Badge tone="amber">{rtos.length} RTOs</Badge>
+                </div>
+              </div>
+            </div>
+            <Button size="sm" variant="ghost" onClick={handleReset} className="shrink-0">
+              Upload Another
+            </Button>
+          </div>
           <CardBody className="space-y-4">
             <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
@@ -398,80 +483,50 @@ export function CommissionGrid() {
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-xs font-medium text-slate-500">Company</span>
-                  <select
+                  <CommissionGridFilterSelect
                     value={companyFilter}
                     onChange={handleCompanyFilterChange}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  >
-                    <option value="all">All companies ({companies.length})</option>
-                    {companies.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+                    options={companies}
+                    allLabel={`All companies (${companies.length})`}
+                  />
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-xs font-medium text-slate-500">Class</span>
-                  <select
+                  <CommissionGridFilterSelect
                     value={productFilter}
                     onChange={handleProductFilterChange}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  >
-                    <option value="all">All classes ({products.length})</option>
-                    {products.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
+                    options={products}
+                    allLabel={`All classes (${products.length})`}
+                  />
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-xs font-medium text-slate-500">Sub Product</span>
-                  <select
+                  <CommissionGridFilterSelect
                     value={subProductFilter}
                     onChange={handleSubProductFilterChange}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    options={subProducts}
+                    allLabel={`All sub products (${subProducts.length})`}
                     disabled={subProducts.length === 0}
-                  >
-                    <option value="all">All sub products ({subProducts.length})</option>
-                    {subProducts.map((sp) => (
-                      <option key={sp} value={sp}>
-                        {sp}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-xs font-medium text-slate-500">Policy Type</span>
-                  <select
+                  <CommissionGridFilterSelect
                     value={policyTypeFilter}
                     onChange={handlePolicyTypeFilterChange}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  >
-                    <option value="all">All types ({policyTypes.length})</option>
-                    {policyTypes.map((pt) => (
-                      <option key={pt} value={pt}>
-                        {pt}
-                      </option>
-                    ))}
-                  </select>
+                    options={policyTypes}
+                    allLabel={`All types (${policyTypes.length})`}
+                  />
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-xs font-medium text-slate-500">RTO</span>
-                  <select
+                  <CommissionGridFilterSelect
                     value={rtoFilter}
                     onChange={handleRtoFilterChange}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    options={rtos}
+                    allLabel={`All RTOs (${rtos.length})`}
                     disabled={rtos.length === 0}
-                  >
-                    <option value="all">All RTOs ({rtos.length})</option>
-                    {rtos.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </label>
               </div>
 
@@ -502,19 +557,19 @@ export function CommissionGrid() {
               )}
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="overflow-x-auto rounded-xl border border-slate-300 shadow-sm">
               <table className="w-full min-w-[1400px] text-sm border-collapse">
                 <thead>
-                  <tr className="text-center text-slate-500 bg-slate-50">
-                    <th className="py-2.5 px-3 font-medium border border-slate-200 whitespace-nowrap">Company</th>
-                    <th className="py-2.5 px-3 font-medium border border-slate-200 whitespace-nowrap">Product</th>
-                    <th className="py-2.5 px-3 font-medium border border-slate-200 whitespace-nowrap">Sub Product</th>
-                    <th className="py-2.5 px-3 font-medium border border-slate-200 whitespace-nowrap">Type</th>
-                    <th className="py-2.5 px-3 font-medium border border-slate-200 whitespace-nowrap">RTO</th>
-                    <th className="py-2.5 px-3 font-medium border border-slate-200 whitespace-nowrap">Discount</th>
-                    <th className="py-2.5 px-3 font-medium border border-slate-200 min-w-[280px]">Rates</th>
-                    <th className="py-2.5 px-3 font-medium border border-slate-200 min-w-[220px]">Remarks</th>
-                    <th className="py-2.5 px-3 font-medium border border-slate-200 whitespace-nowrap">Booking</th>
+                  <tr className="text-center text-slate-600 bg-gradient-to-b from-slate-100 to-slate-100/70">
+                    <th className="py-3 px-3 font-semibold text-[11px] uppercase tracking-wider whitespace-nowrap border border-slate-300">Company</th>
+                    <th className="py-3 px-3 font-semibold text-[11px] uppercase tracking-wider whitespace-nowrap border border-slate-300">Product</th>
+                    <th className="py-3 px-3 font-semibold text-[11px] uppercase tracking-wider whitespace-nowrap border border-slate-300">Sub Product</th>
+                    <th className="py-3 px-3 font-semibold text-[11px] uppercase tracking-wider whitespace-nowrap border border-slate-300">Type</th>
+                    <th className="py-3 px-3 font-semibold text-[11px] uppercase tracking-wider whitespace-nowrap border border-slate-300">RTO</th>
+                    <th className="py-3 px-3 font-semibold text-[11px] uppercase tracking-wider whitespace-nowrap border border-slate-300">Discount</th>
+                    <th className="py-3 px-3 font-semibold text-[11px] uppercase tracking-wider min-w-[280px] border border-slate-300">Rates</th>
+                    <th className="py-3 px-3 font-semibold text-[11px] uppercase tracking-wider min-w-[220px] border border-slate-300">Remarks</th>
+                    <th className="py-3 px-3 font-semibold text-[11px] uppercase tracking-wider whitespace-nowrap border border-slate-300">Booking</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -522,84 +577,71 @@ export function CommissionGrid() {
                     const rates = item.rates || [];
                     const isMultiSlab = rates.length > 1;
                     return (
-                      <tr key={idx} className="align-top hover:bg-slate-50/60">
-                        <td className="py-3 px-3 text-center font-medium text-slate-900 border border-slate-200 align-top">{item.company || '—'}</td>
-                        <td className="py-3 px-3 text-center text-slate-700 border border-slate-200 align-top">{item.product}</td>
-                        <td className="py-3 px-3 text-center text-slate-700 border border-slate-200 align-top">{item.subProduct || '—'}</td>
-                        <td className="py-3 px-3 text-center text-slate-700 border border-slate-200 align-top">{item.policyType || '—'}</td>
-                        <td className="py-3 px-3 text-center text-slate-700 border border-slate-200 align-top">{item.rto || '—'}</td>
-                        <td className="py-3 px-3 text-center border border-slate-200 align-top">
-                          <Badge tone="slate">{formatPercent(item.discountPercent, item.discountNote)}</Badge>
+                      <tr
+                        key={idx}
+                        className={`align-top transition-colors hover:bg-brand-50/50 ${idx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'}`}
+                      >
+                        <td className="py-3 px-3 align-top border border-slate-200">
+                          <IdentityPill label={item.company} />
                         </td>
-                        <td className="py-3 px-3 text-center border border-slate-200 align-top">
+                        <td className="py-3 px-3 text-left text-slate-700 align-top whitespace-nowrap border border-slate-200">{item.product}</td>
+                        <td className="py-3 px-3 text-left text-slate-600 align-top border border-slate-200">{item.subProduct || <span className="text-slate-300">—</span>}</td>
+                        <td className="py-3 px-3 align-top border border-slate-200">
+                          {item.policyType ? <IdentityPill label={item.policyType} /> : <span className="text-slate-300">—</span>}
+                        </td>
+                        <td className="py-3 px-3 text-left text-slate-700 align-top border border-slate-200">{item.rto || <span className="text-slate-300">—</span>}</td>
+                        <td className="py-3 px-3 align-top border border-slate-200">
+                          <RateBadge value={item.discountPercent} note={item.discountNote} />
+                        </td>
+                        <td className="py-3 px-3 align-top border border-slate-200">
                           {rates.length === 0 ? (
-                            <span className="text-slate-400">—</span>
+                            <span className="text-slate-300">—</span>
                           ) : !isMultiSlab && !slabHasAnyFuelValue(rates[0]) ? (
-                            <Badge tone="brand">{formatPercent(rates[0].allFuelPercent, rates[0].note)}</Badge>
+                            <RateBadge value={rates[0].allFuelPercent} note={rates[0].note} />
                           ) : (
-                            <table className="border-collapse border border-slate-200">
+                            <table className="w-full border-collapse border border-slate-300 rounded-md overflow-hidden">
                               <thead>
-                                <tr className="bg-slate-50">
-                                  <th className="text-center font-medium text-slate-500 text-[11px] uppercase tracking-wide border border-slate-200 px-3 py-1.5 whitespace-nowrap">
+                                <tr className="bg-slate-100 text-center">
+                                  <th className="font-semibold text-slate-500 text-[10px] uppercase tracking-wider px-2.5 py-1.5 whitespace-nowrap border border-slate-300">
                                     Slab
                                   </th>
-                                  <th className="text-center font-medium text-slate-500 text-[11px] uppercase tracking-wide border border-slate-200 px-3 py-1.5">
+                                  <th className="font-semibold text-slate-500 text-[10px] uppercase tracking-wider px-2.5 py-1.5 border border-slate-300">
                                     Petrol
                                   </th>
-                                  <th className="text-center font-medium text-slate-500 text-[11px] uppercase tracking-wide border border-slate-200 px-3 py-1.5">
+                                  <th className="font-semibold text-slate-500 text-[10px] uppercase tracking-wider px-2.5 py-1.5 border border-slate-300">
                                     Diesel
                                   </th>
-                                  <th className="text-center font-medium text-slate-500 text-[11px] uppercase tracking-wide border border-slate-200 px-3 py-1.5">
+                                  <th className="font-semibold text-slate-500 text-[10px] uppercase tracking-wider px-2.5 py-1.5 border border-slate-300">
                                     CNG
                                   </th>
-                                  <th className="text-center font-medium text-slate-500 text-[11px] uppercase tracking-wide border border-slate-200 px-3 py-1.5">
+                                  <th className="font-semibold text-slate-500 text-[10px] uppercase tracking-wider px-2.5 py-1.5 border border-slate-300">
                                     Electric
                                   </th>
-                                  <th className="text-center font-medium text-slate-500 text-[11px] uppercase tracking-wide border border-slate-200 px-3 py-1.5">
+                                  <th className="font-semibold text-slate-500 text-[10px] uppercase tracking-wider px-2.5 py-1.5 border border-slate-300">
                                     All Fuel
                                   </th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {rates.map((rate, rIdx) => (
-                                  <tr key={rIdx}>
-                                    <td className="text-center border border-slate-200 px-3 py-1.5 text-slate-700 font-medium whitespace-nowrap">
+                                  <tr key={rIdx} className={rIdx % 2 === 1 ? 'bg-slate-50' : 'bg-white'}>
+                                    <td className="px-2.5 py-1.5 text-slate-700 font-medium whitespace-nowrap border border-slate-200">
                                       {rate.slabLabel || '—'}
                                     </td>
-                                    <td className="text-center border border-slate-200 px-3 py-1.5">
-                                      {rate.petrolPercent != null || rate.petrolNote ? (
-                                        <Badge tone="brand">{formatPercent(rate.petrolPercent, rate.petrolNote)}</Badge>
-                                      ) : (
-                                        <span className="text-slate-300">—</span>
-                                      )}
+                                    <td className="px-2.5 py-1.5 border border-slate-200">
+                                      <RateBadge value={rate.petrolPercent} note={rate.petrolNote} />
                                     </td>
-                                    <td className="text-center border border-slate-200 px-3 py-1.5">
-                                      {rate.dieselPercent != null || rate.dieselNote ? (
-                                        <Badge tone="brand">{formatPercent(rate.dieselPercent, rate.dieselNote)}</Badge>
-                                      ) : (
-                                        <span className="text-slate-300">—</span>
-                                      )}
+                                    <td className="px-2.5 py-1.5 border border-slate-200">
+                                      <RateBadge value={rate.dieselPercent} note={rate.dieselNote} />
                                     </td>
-                                    <td className="text-center border border-slate-200 px-3 py-1.5">
-                                      {rate.cngPercent != null || rate.cngNote ? (
-                                        <Badge tone="brand">{formatPercent(rate.cngPercent, rate.cngNote)}</Badge>
-                                      ) : (
-                                        <span className="text-slate-300">—</span>
-                                      )}
+                                    <td className="px-2.5 py-1.5 border border-slate-200">
+                                      <RateBadge value={rate.cngPercent} note={rate.cngNote} />
                                     </td>
-                                    <td className="text-center border border-slate-200 px-3 py-1.5">
-                                      {rate.electricPercent != null || rate.electricNote ? (
-                                        <Badge tone="brand">{formatPercent(rate.electricPercent, rate.electricNote)}</Badge>
-                                      ) : (
-                                        <span className="text-slate-300">—</span>
-                                      )}
+                                    <td className="px-2.5 py-1.5 border border-slate-200">
+                                      <RateBadge value={rate.electricPercent} note={rate.electricNote} />
                                     </td>
-                                    <td className="text-center border border-slate-200 px-3 py-1.5">
-                                      {rate.allFuelPercent != null || rate.note ? (
-                                        <Badge tone="brand">{formatPercent(rate.allFuelPercent, rate.note)}</Badge>
-                                      ) : (
-                                        <span className="text-slate-300">—</span>
-                                      )}
+                                    <td className="px-2.5 py-1.5 border border-slate-200">
+                                      <RateBadge value={rate.allFuelPercent} note={rate.note} />
                                     </td>
                                   </tr>
                                 ))}
@@ -607,19 +649,24 @@ export function CommissionGrid() {
                             </table>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center text-slate-600 border border-slate-200 whitespace-pre-wrap align-top">
-                          {item.remarks || '—'}
+                        <td className="py-3 px-3 text-left text-slate-600 whitespace-pre-wrap align-top border border-slate-200">
+                          {item.remarks || <span className="text-slate-300">—</span>}
                         </td>
-                        <td className="py-3 px-3 text-center text-slate-500 border border-slate-200 align-top">
-                          {item.bookingEntity || '—'}
+                        <td className="py-3 px-3 text-left text-slate-500 align-top whitespace-nowrap border border-slate-200">
+                          {item.bookingEntity || <span className="text-slate-300">—</span>}
                         </td>
                       </tr>
                     );
                   })}
                   {filteredLineItems.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="py-6 text-center text-slate-400">
-                        No line items match your filters.
+                      <td colSpan={9} className="py-10 text-center text-slate-400">
+                        <div className="flex flex-col items-center gap-2">
+                          <svg className="w-8 h-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                          </svg>
+                          <span>No line items match your filters.</span>
+                        </div>
                       </td>
                     </tr>
                   )}

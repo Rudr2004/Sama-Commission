@@ -12,8 +12,9 @@ import re
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from anthropic_client import extract_grid_from_file
 from validation import apply_fallback_company, validate_extraction
@@ -41,6 +42,16 @@ ALLOWED_MIME_TYPES = {
 # sending application/octet-stream instead), so fall back to the extension.
 XLSB_EXTENSION = re.compile(r"\.xlsb$", re.IGNORECASE)
 MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024  # 20MB, matches Anthropic's document upload limit
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    # The frontend (originally written against the Express backend) reads the
+    # error message from an "error" key, e.g. data?.error in CommissionGrid.jsx.
+    # FastAPI's default HTTPException body only has "detail" — mirror it into
+    # "error" too so error messages actually reach the UI instead of falling
+    # back to a generic message.
+    return JSONResponse(status_code=exc.status_code, content={"error": exc.detail, "detail": exc.detail})
 
 
 @app.get("/api/health")
