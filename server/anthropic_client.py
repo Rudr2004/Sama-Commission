@@ -90,13 +90,26 @@ def _merge_extractions(extractions: list[dict]) -> dict:
     return merged
 
 
+def _stamp_source_sheet(extraction: dict, sheet_name: str | None) -> dict:
+    # Tagging is done here, programmatically, rather than asking the model to
+    # echo the sheet name back per line item: it's free (no extra output
+    # tokens) and 100% accurate, since we already know which chunk/sheet
+    # produced this extraction.
+    if not sheet_name:
+        return extraction
+    for item in extraction.get("lineItems", []):
+        item["sourceSheet"] = sheet_name
+    return extraction
+
+
 def _extract_from_chunks(chunks: list[dict]) -> dict:
     if len(chunks) == 1:
         document_block = {
             "type": "document",
             "source": {"type": "text", "media_type": "text/plain", "data": chunks[0]["text"]},
         }
-        return _run_extraction(document_block, is_spreadsheet_text=True)
+        extraction = _run_extraction(document_block, is_spreadsheet_text=True)
+        return _stamp_source_sheet(extraction, chunks[0].get("sheetName"))
 
     # Large/multi-sheet workbook: extract each chunk independently so no single
     # AI call has to digest the whole workbook, then merge the results together.
@@ -107,7 +120,8 @@ def _extract_from_chunks(chunks: list[dict]) -> dict:
             "source": {"type": "text", "media_type": "text/plain", "data": chunk["text"]},
         }
         try:
-            extractions.append(_run_extraction(document_block, is_spreadsheet_text=True))
+            extraction = _run_extraction(document_block, is_spreadsheet_text=True)
+            extractions.append(_stamp_source_sheet(extraction, chunk.get("sheetName")))
         except Exception as err:
             raise RuntimeError(f'Failed while extracting "{chunk["label"]}": {err}') from err
 
