@@ -37,6 +37,7 @@ def xlsb_buffer_to_chunks(buffer: bytes) -> list[dict]:
                 chunks.append(
                     {
                         "label": f"Sheet: {sheet_name}",
+                        "sheetName": sheet_name,
                         "text": "\n".join([f"## Sheet: {sheet_name}", *rows]),
                     }
                 )
@@ -50,6 +51,7 @@ def xlsb_buffer_to_chunks(buffer: bytes) -> list[dict]:
                 chunks.append(
                     {
                         "label": f"Sheet: {sheet_name} ({range_label})",
+                        "sheetName": sheet_name,
                         "text": "\n".join([f"## Sheet: {sheet_name} ({range_label})", header_row, *sliced]),
                     }
                 )

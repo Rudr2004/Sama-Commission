@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../../store/StoreContext.jsx';
 import { evaluateCommission } from '../../engine/evaluateCommission.js';
 import { calculatePremium } from '../../engine/calculatePremium.js';
@@ -7,6 +8,7 @@ import { PolicyInputSummary } from '../../components/common/PolicyInputSummary.j
 import { Card, CardHeader, CardBody } from '../../components/common/Card.jsx';
 import { Button } from '../../components/common/Button.jsx';
 import { InfoPanel } from '../../components/common/InfoPanel.jsx';
+import { GridQuoteResults, fetchGridQuote } from '../../components/gridQuote/GridQuotePanel.jsx';
 
 const initialInput = {
   regNumber: '',
@@ -32,6 +34,11 @@ const initialInput = {
   isCngLpg: '',
 };
 
+function currentMonthValue() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export function AgentPortal() {
   const { state, setCommissionCheckerSession } = useStore();
 
@@ -42,6 +49,37 @@ export function AgentPortal() {
   const input = session?.input ?? initialInput;
   const results = session?.results ?? null;
   const submittedInput = session?.submittedInput ?? null;
+
+  // Broker commission from the uploaded commission grids, shown below the rule-based results for
+  // the same vehicle. Failures here never affect the existing results above it.
+  const [gridMonth, setGridMonth] = useState(currentMonthValue);
+  const [gridState, setGridState] = useState({ loading: false, error: null, outcome: null });
+  const gridMonths = useMemo(() => {
+    const now = new Date();
+    return [0, 1].map((offset) => {
+      const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+      return {
+        value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+        label: d.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+      };
+    });
+  }, []);
+
+  const loadGridQuote = async (vehicleInput, month) => {
+    setGridState({ loading: true, error: null, outcome: null });
+    try {
+      const outcome = await fetchGridQuote(vehicleInput, month);
+      setGridState({ loading: false, error: null, outcome });
+    } catch (err) {
+      setGridState({ loading: false, error: err.message || 'Could not load grid commission.', outcome: null });
+    }
+  };
+
+  // The checker's results survive navigating between tabs; re-fetch the grid part when coming back.
+  useEffect(() => {
+    if (submittedInput) loadGridQuote(submittedInput, gridMonth);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const setInput = (nextInput) => {
     setCommissionCheckerSession({ input: nextInput, results, submittedInput });
@@ -71,10 +109,12 @@ export function AgentPortal() {
     const withPremium = { ...normalized, premiumAmount: premium?.grossPremium ?? '' };
     const nextResults = evaluateCommission(withPremium, state.insurers, state.rules, state.agentOverrides);
     setCommissionCheckerSession({ input, results: nextResults, submittedInput: withPremium });
+    loadGridQuote(withPremium, gridMonth);
   };
 
   const handleReset = () => {
     setCommissionCheckerSession(null);
+    setGridState({ loading: false, error: null, outcome: null });
   };
 
   return (
@@ -114,6 +154,44 @@ export function AgentPortal() {
               <CommissionResultsList results={results} insurers={state.insurers} submittedInput={submittedInput} />
             </CardBody>
           </Card>
+
+          {gridState.loading && (
+            <Card>
+              <CardBody>
+                <p className="text-sm text-slate-500">Calculating broker commission from the uploaded grids…</p>
+              </CardBody>
+            </Card>
+          )}
+          {gridState.error && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Grid commission isn't available right now: {gridState.error}
+            </div>
+          )}
+          {gridState.outcome && (
+            <GridQuoteResults
+              result={gridState.outcome.response}
+              premium={gridState.outcome.premium}
+              headerAction={
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-slate-500">Grid month</span>
+                  <select
+                    value={gridMonth}
+                    onChange={(e) => {
+                      setGridMonth(e.target.value);
+                      loadGridQuote(submittedInput, e.target.value);
+                    }}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    {gridMonths.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              }
+            />
+          )}
         </>
       )}
     </div>
