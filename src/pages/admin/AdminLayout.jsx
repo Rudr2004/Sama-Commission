@@ -6,8 +6,9 @@ const TABS = [
   { to: '/admin/policies', label: 'Policy Catalog' },
   { to: '/admin/quick-rule', label: 'Quick Commission Rule' },
   { to: '/admin/overrides', label: 'Agent Overrides' },
-  { to: '/admin/simulate', label: 'Rule Simulator' },
+  // { to: '/admin/simulate', label: 'Rule Simulator' },
   { to: '/admin/commission-grid', label: 'Commission Grid' },
+  { to: '/admin/grid-quote', label: 'Grid Commission Calculator' },
 ];
 
 export function AdminLayout() {
