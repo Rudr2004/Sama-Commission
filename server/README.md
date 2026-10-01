@@ -33,9 +33,12 @@ which insurer/broker layout the document uses.
    ```
 3. Run the server:
    ```
-   dev.bat                                                            # Windows
-   # venv/bin/uvicorn main:app --host 0.0.0.0 --port 5001 --reload    # macOS/Linux
+   dev.bat                                                            # Windows, cmd/PowerShell
+   venv/Scripts/uvicorn main:app --host 0.0.0.0 --port 5001 --reload  # Windows, Git Bash — use forward slashes
+   venv/bin/uvicorn main:app --host 0.0.0.0 --port 5001 --reload      # macOS/Linux
    ```
+   Note: on Windows, Git Bash treats `\` as an escape character, so a path like `venv\Scripts\uvicorn`
+   silently breaks there — always use `venv/Scripts/uvicorn` (forward slashes) in Git Bash specifically.
 
 Frontend and backend are started independently, each with its own native tooling: `npm run dev`
 (from the project root) for the Vite frontend, `dev.bat` (from `server/`) for this API. The
@@ -68,13 +71,18 @@ run both at once, in two terminals, while developing.
             { "slabLabel": "New", "allFuelPercent": 20, "petrolPercent": null, "dieselPercent": null, "cngPercent": null, "electricPercent": null, "note": "" }
           ],
           "remarks": "...",
-          "bookingEntity": "..."
+          "bookingEntity": "...",
+          "sourceSheet": "PCV STP"
         }
       ],
       "unparsedNotes": "..."
     }
   }
   ```
+  `sourceSheet` is present only for spreadsheet uploads (`.xlsx`/`.xlsb`) — it's the name of the
+  workbook sheet each line item came from, stamped on by the backend after extraction (not part of
+  the model's output schema), so the frontend can group results by sheet. Absent for PDF/image
+  uploads, which have no sheet concept.
 
 Max upload size is 20MB. Accepted types: `application/pdf`, `image/png`, `image/jpeg`,
 `image/webp`, `.xlsx`, `.xlsb`.

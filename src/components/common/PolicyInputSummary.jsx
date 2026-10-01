@@ -179,6 +179,7 @@ export function PolicyInputSummary({ input, insurers }) {
                         </div>
                       </>
                     )}
+                    
                     <div className="px-3 py-2 border-b border-r border-slate-100 text-slate-500">Net Premium</div>
                     <div className="px-3 py-2 border-b border-slate-100 text-right font-medium text-slate-800">
                       ₹{breakdown.netPremium.toLocaleString('en-IN')}

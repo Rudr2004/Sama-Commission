@@ -12,6 +12,7 @@ import { QuickCommissionRule } from './pages/admin/QuickCommissionRule.jsx';
 import { AgentOverrides } from './pages/admin/AgentOverrides.jsx';
 import { RuleSimulator } from './pages/admin/RuleSimulator.jsx';
 import { CommissionGrid } from './pages/admin/CommissionGrid.jsx';
+import { GridQuote } from './pages/admin/GridQuote.jsx';
 import { AgentLayout } from './pages/agent/AgentLayout.jsx';
 import { AgentPortal } from './pages/agent/AgentPortal.jsx';
 import { PolicyBrowse } from './pages/agent/PolicyBrowse.jsx';
@@ -62,6 +63,7 @@ function AppShell() {
             <Route path="overrides" element={<AgentOverrides />} />
             <Route path="simulate" element={<RuleSimulator />} />
             <Route path="commission-grid" element={<CommissionGrid />} />
+            <Route path="grid-quote" element={<GridQuote />} />
           </Route>
           <Route path="/agent" element={<AgentLayout />}>
             <Route index element={<AgentPortal />} />
