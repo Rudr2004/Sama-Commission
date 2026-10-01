@@ -68,3 +68,31 @@ body {
 .animate-toast-in {
   animation: toast-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+@keyframes loading-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.animate-loading-bar {
+  animation: loading-bar 1.4s ease-in-out infinite;
+}
+
+@keyframes result-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-result-fade-in {
+  animation: result-fade-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
